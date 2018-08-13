@@ -71,11 +71,4 @@ imageExample = imread(imageList(1).name);
 %imshow(rowVals);
 output_size = max(size(imageExample));
 
-%imagesc(rowVals)
-% colormap(hot)
-% colorbar
-% xlabel('Parallel Rotation Angle - \theta (degrees)'); 
-% ylabel('Parallel Sensor Position - x\prime (pixels)');
-
-%[projections, Xp] = radon(rowVals,theta);
 end
