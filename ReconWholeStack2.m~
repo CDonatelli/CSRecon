@@ -1,4 +1,4 @@
-function data = ReconWholeStack2()
+function data = ReconWholeStack2(filePrefix)
 
 %process video into stack of useful images
 
@@ -7,7 +7,7 @@ imageList = dir('*.JPG') ;
 theta = 180/m;
 testImage = imread(imageList(1).name);
 
-disp('Geting image dimensions ...')
+disp('Getting image dimensions ...')
 imHeight = size(testImage,1);
 imWidth = size(testImage,2);
 
@@ -20,15 +20,14 @@ imFrames = struct('cdata',zeros(imHeight,imWidth,3,'uint8'),...
 
 disp('Creating Image Frame Structure ...')
 for i = 1:m
-    imFrames(i).cdata = imRead(imageList(i).name);
+    imFrames(i).cdata = imread(imageList(i).name);
 end
 
-m = size(imFrames,2);
-theta = 360/m;
+imFrames = alignStack(imFrames);
 
 %set aside teh memory
 disp('Setting aside memory for data structures...')
-for i = 1:1:m    
+for i = 1:1:imHeight    
     data(i).RrowVals = [];
     data(i).GrowVals = [];
     data(i).BrowVals = [];
@@ -46,22 +45,22 @@ for i = 1:1:m
         data(j).GrowVals = [data(j).GrowVals; greenImage(j,:)];
         data(j).BrowVals = [data(j).BrowVals; blueImage(j,:)];
     end
-    disp(['Sinogram ', num2str(i), ' out of ', num2str(m), ' complete.'])
+    disp(['Sinogram ', num2str(i), ' out of ', num2str(imHeight), ' complete.'])
 end
 
 % make the individual channels and the RGB image
-directoryString = [videoFile(1:end-4),'_slices'];
+directoryString = [filePrefix,'_slices'];
 mkdir(directoryString)
 cd(directoryString)
 disp('Reconstructing the images ...')
 for i = 1:1:size(data,2)
-    data(i).rRecondImage = iradon(data(i).RrowVals',theta, 'Cosine');
-    data(i).gRecondImage = iradon(data(i).GrowVals',theta, 'Cosine');
-    data(i).bRecondImage = iradon(data(i).BrowVals',theta, 'Cosine');
+    data(i).rRecondImage = 256*iradon(data(i).RrowVals',theta, 'Cosine');
+    data(i).gRecondImage = 256*iradon(data(i).GrowVals',theta, 'Cosine');
+    data(i).bRecondImage = 256*iradon(data(i).BrowVals',theta, 'Cosine');
     data(i).recondImage = cat(3,data(i).rRecondImage,...
         data(i).gRecondImage, data(i).bRecondImage);
     imshow(data(i).recondImage);
-    saveas(gcf, [videoFile(1:end-4),'_', num2str(i,'%03i'),'.tif'])
+    saveas(gcf, [filePrefix,'_', num2str(i,'%03i'),'.tif'])
     disp(['Reconstruction ', num2str(i), ' out of ', num2str(size(data,2)), ' complete.'])
 end
 cd ..
@@ -69,4 +68,8 @@ imageExample = imread(imageList(1).name);
 %imshow(rowVals);
 output_size = max(size(imageExample));
 
+end
+
+function outFrames = alignStack(inFrames)
+outFrames = inFrames;
 end

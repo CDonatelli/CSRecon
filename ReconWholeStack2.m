@@ -7,7 +7,7 @@ imageList = dir('*.JPG') ;
 theta = 180/m;
 testImage = imread(imageList(1).name);
 
-disp('Geting image dimensions ...')
+disp('Getting image dimensions ...')
 imHeight = size(testImage,1);
 imWidth = size(testImage,2);
 
@@ -20,14 +20,14 @@ imFrames = struct('cdata',zeros(imHeight,imWidth,3,'uint8'),...
 
 disp('Creating Image Frame Structure ...')
 for i = 1:m
-    imFrames(i).cdata = imRead(imageList(i).name);
+    imFrames(i).cdata = imread(imageList(i).name);
 end
 
-theta = 180/m;
+imFrames = alignStack(imFrames);
 
 %set aside teh memory
 disp('Setting aside memory for data structures...')
-for i = 1:1:m    
+for i = 1:1:imHeight    
     data(i).RrowVals = [];
     data(i).GrowVals = [];
     data(i).BrowVals = [];
@@ -53,7 +53,7 @@ directoryString = [filePrefix,'_slices'];
 mkdir(directoryString)
 cd(directoryString)
 disp('Reconstructing the images ...')
-for i = 1:1:size(data,2)
+for i = 2000:1:size(data,2)
     data(i).rRecondImage = 256*iradon(data(i).RrowVals',theta, 'Cosine');
     data(i).gRecondImage = 256*iradon(data(i).GrowVals',theta, 'Cosine');
     data(i).bRecondImage = 256*iradon(data(i).BrowVals',theta, 'Cosine');
@@ -68,4 +68,8 @@ imageExample = imread(imageList(1).name);
 %imshow(rowVals);
 output_size = max(size(imageExample));
 
+end
+
+function outFrames = alignStack(inFrames)
+outFrames = inFrames;
 end
