@@ -1,6 +1,6 @@
-imageList = dir('*.tif') ;
+imageList = dir('*.JPG') ;
 [m,n] = size(imageList);
-theta = 360/m;
+theta = 180/m;
 
 RrowVals = [];
 GrowVals = [];
@@ -11,9 +11,9 @@ for i = 1:1:m
     GreenImage = currentImage(:,:,2);
     BlueImage = currentImage(:,:,3);
     %[imageM, imageN] = size(3,RedImage, GreenImage, BlueImage);
-    RrowVals = [RrowVals; RedImage(500,:)];
-    GrowVals = [GrowVals; GreenImage(500,:)];
-    BrowVals = [BrowVals; BlueImage(500,:)];
+    RrowVals = [RrowVals; RedImage(2000,:)];
+    GrowVals = [GrowVals; GreenImage(2000,:)];
+    BrowVals = [BrowVals; BlueImage(2000,:)];
     
 end
 imageExample = imread(imageList(1).name);
@@ -28,8 +28,8 @@ output_size = max(size(imageExample));
 
 %[projections, Xp] = radon(rowVals,theta);
 
-RrecondImage = iradon(RrowVals',theta, 'Cosine');
-GrecondImage = iradon(GrowVals',theta, 'Cosine');
-BrecondImage = iradon(BrowVals',theta, 'Cosine');
+RrecondImage = 256*iradon(RrowVals',theta, 'Cosine');
+GrecondImage = 256*iradon(GrowVals',theta, 'Cosine');
+BrecondImage = 256*iradon(BrowVals',theta, 'Cosine');
 recondImage = cat(3,RrecondImage, GrecondImage, BrecondImage);
 imshow(recondImage)
