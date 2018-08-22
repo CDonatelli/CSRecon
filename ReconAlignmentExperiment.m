@@ -1,4 +1,4 @@
-function data = ReconWholeStack2(filePrefix)
+function data = ReconAlignmentExperiment(filePrefix)
 
 %process video into stack of useful images
 
