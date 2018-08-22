@@ -7,6 +7,20 @@ imageList = dir('*.JPG') ;
 theta = 180/m;
 testImage = imread(imageList(1).name);
 
+figure
+imshow(testImage);
+[J, rect] = imcrop(testImage);
+% if rect(3)>rect(4)
+%     rect(3)=rect(4);
+% elseif rect(4)>rect(3)
+%     rect(4)=rect(3);
+% else
+%     rect = rect;
+% end
+% assumes the images is landscape
+rect(3) = rect(4);
+testImage = imcrop(imread(imageList(1).name),rect);
+
 disp('Getting image dimensions ...')
 imHeight = size(testImage,1);
 imWidth = size(testImage,2);
@@ -20,7 +34,7 @@ imFrames = struct('cdata',zeros(imHeight,imWidth,3,'uint8'),...
 
 disp('Creating Image Frame Structure ...')
 for i = 1:m
-    imFrames(i).cdata = imread(imageList(i).name);
+    imFrames(i).cdata = imcrop(imread(imageList(i).name),rect);
 end
 
 disp('Calculating Alignment ...')
@@ -54,7 +68,7 @@ directoryString = [filePrefix,'_slices'];
 mkdir(directoryString)
 cd(directoryString)
 disp('Reconstructing the images ...')
-for i = 2000:1:2010     % this should be 1:1:size(data,2)
+for i = 2000:1:2005     % this should be 1:1:size(data,2)
     data(i).rRecondImage = 256*iradon(data(i).RrowVals',theta, 'Cosine');
     data(i).gRecondImage = 256*iradon(data(i).GrowVals',theta, 'Cosine');
     data(i).bRecondImage = 256*iradon(data(i).BrowVals',theta, 'Cosine');
@@ -91,11 +105,11 @@ while aligned ~= 2
     disp('Aligning Images ...')
     for i = 1:size(inFrames,2)
         outFrames(i).cdata(:,:,1) = imtranslate(inFrames(i).cdata(:,:,1),...
-            [mult*round(tform.T(3,1)),0]);
+            [mult*(round(tform.T(3,1))/2),0]);
         outFrames(i).cdata(:,:,2) = imtranslate(inFrames(i).cdata(:,:,2),...
-            [mult*round(tform.T(3,1)),0]);
+            [mult*(round(tform.T(3,1))/2),0]);
         outFrames(i).cdata(:,:,3) = imtranslate(inFrames(i).cdata(:,:,3),...
-            [mult*round(tform.T(3,1)),0]);
+            [mult*(round(tform.T(3,1))/2),0]);
     end
 %%%--------------------------------------------------------------%%%    
     RrowVals = [];GrowVals = [];BrowVals = [];
@@ -107,9 +121,9 @@ while aligned ~= 2
         blueImage = currentImage(:,:,3);
         
         [rows, cols] = size(redImage);
-        RrowVals = [RrowVals; redImage(rows/2,:)];
-        GrowVals = [GrowVals; greenImage(rows/2,:)];
-        BrowVals = [BrowVals; blueImage(rows/2,:)];
+        RrowVals = [RrowVals; redImage(round(rows/2),:)];
+        GrowVals = [GrowVals; greenImage(round(rows/2),:)];
+        BrowVals = [BrowVals; blueImage(round(rows/2),:)];
 
     end
     
