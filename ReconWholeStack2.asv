@@ -54,7 +54,7 @@ directoryString = [filePrefix,'_slices'];
 mkdir(directoryString)
 cd(directoryString)
 disp('Reconstructing the images ...')
-for i = 2000:1:size(data,2)
+for i = 2000:1:2010
     data(i).rRecondImage = 256*iradon(data(i).RrowVals',theta, 'Cosine');
     data(i).gRecondImage = 256*iradon(data(i).GrowVals',theta, 'Cosine');
     data(i).bRecondImage = 256*iradon(data(i).BrowVals',theta, 'Cosine');
@@ -83,10 +83,11 @@ optimizer.GrowthFactor = 1.01;
 optimizer.MaximumIterations = 100;
 tform = imregtform(startFrame,endFrame, 'translation', optimizer, metric);
 
-%%% Comment out between------- to remove loop %%%
 aligned = 0;
-mult = 1;
+
+%%% Comment out between------- to remove loop %%%
 while aligned ~= 2
+    mult = 1;
 %%%--------------------------------------------------------------%%%
     disp('Aligning Images ...')
     for i = 1:size(inFrames,2)
