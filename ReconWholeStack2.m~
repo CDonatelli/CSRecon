@@ -45,7 +45,7 @@ for i = 1:1:m
         data(j).GrowVals = [data(j).GrowVals; greenImage(j,:)];
         data(j).BrowVals = [data(j).BrowVals; blueImage(j,:)];
     end
-    disp(['Sinogram ', num2str(i), ' out of ', num2str(imHeight), ' complete.'])
+    disp(['Sinogram ', num2str(i), ' out of ', num2str(m), ' complete.'])
 end
 
 % make the individual channels and the RGB image
@@ -53,7 +53,7 @@ directoryString = [filePrefix,'_slices'];
 mkdir(directoryString)
 cd(directoryString)
 disp('Reconstructing the images ...')
-for i = 1:1:size(data,2)
+for i = 2000:1:size(data,2)
     data(i).rRecondImage = 256*iradon(data(i).RrowVals',theta, 'Cosine');
     data(i).gRecondImage = 256*iradon(data(i).GrowVals',theta, 'Cosine');
     data(i).bRecondImage = 256*iradon(data(i).BrowVals',theta, 'Cosine');
@@ -71,5 +71,22 @@ output_size = max(size(imageExample));
 end
 
 function outFrames = alignStack(inFrames)
-outFrames = inFrames;
+%get the first and last frame. Estimate the translation distance between
+%them
+startFrame = rgb2gray(inFrames(1).cdata);
+endFrame = fliplr(rgb2gray(inFrames(end).cdata));
+[optimizer, metric] = imregconfig('monomodal');
+optimizer.InitialRadius = 0.009;
+optimizer.Epsilon = 1.5e-4;
+optimizer.GrowthFactor = 1.01;
+optimizer.MaximumIterations = 100;
+tform = imregtform(startFrame,endFrame, 'translation', optimizer, metric);
+
+for i = 1:size(inFrames(2).cdata,2)
+    outFrames(i).cdata(:,:,1) = imtranslate(inFrames(i).cdata(:,:,1),...
+        [round(tform.T(3,1)),0]);
+    outFrames(i).cdata(:,:,2) = imtranslate(inFrames(i).cdata(:,:,2),...
+        [round(tform.T(3,1)),0]);
+    outFrames(i).cdata(:,:,3) = imtranslate(inFrames(i).cdata(:,:,3),...
+        [round(tform.T(3,1)),0]);
 end

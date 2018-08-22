@@ -71,5 +71,25 @@ output_size = max(size(imageExample));
 end
 
 function outFrames = alignStack(inFrames)
-outFrames = inFrames;
+%get the first and last frame. Estimate the translation distance between
+%them
+startFrame = rgb2gray(inFrames(1).cdata);
+endFrame = fliplr(rgb2gray(inFrames(end).cdata));
+[optimizer, metric] = imregconfig('multimodal');
+optimizer.InitialRadius = 0.009;
+optimizer.Epsilon = 1.5e-4;
+optimizer.GrowthFactor = 1.01;
+optimizer.MaximumIterations = 100;
+tform = imregtform(startFrame,endFrame, 'translation', optimizer, metric);
+
+for i = 1:size(inFrames,2)
+    outFrames(i).cdata(:,:,1) = imtranslate(inFrames(i).cdata(:,:,1),...
+        [round(tform.T(3,1)),0]);
+    outFrames(i).cdata(:,:,2) = imtranslate(inFrames(i).cdata(:,:,2),...
+        [round(tform.T(3,1)),0]);
+    outFrames(i).cdata(:,:,3) = imtranslate(inFrames(i).cdata(:,:,3),...
+        [round(tform.T(3,1)),0]);
+    disp(['Shoving image ',num2str(i),' around']);
 end
+end
+
