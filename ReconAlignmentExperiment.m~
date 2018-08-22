@@ -1,4 +1,4 @@
-function data = ReconWholeStack2(filePrefix)
+function data = ReconAlignmentExperiment(filePrefix)
 
 %process video into stack of useful images
 
@@ -23,8 +23,8 @@ for i = 1:m
     imFrames(i).cdata = imread(imageList(i).name);
 end
 
-disp('Calculating Alignment ...')
-imFrames = alignStack(imFrames,theta);
+for alignPix = 
+imFrames = alignStack(imFrames);
 
 %set aside teh memory
 disp('Setting aside memory for data structures...')
@@ -65,13 +65,13 @@ for i = 2000:1:2010     % this should be 1:1:size(data,2)
     disp(['Reconstruction ', num2str(i), ' out of ', num2str(size(data,2)), ' complete.'])
 end
 cd ..
-%imageExample = imread(imageList(1).name);
+imageExample = imread(imageList(1).name);
 %imshow(rowVals);
-%output_size = max(size(imageExample));
+output_size = max(size(imageExample));
 
 end
 
-function outFrames = alignStack(inFrames,theta)
+function outFrames = alignStack(inFrames)
 %get the first and last frame. Estimate the translation distance between
 %them
 startFrame = rgb2gray(inFrames(1).cdata);
@@ -83,51 +83,14 @@ optimizer.GrowthFactor = 1.01;
 optimizer.MaximumIterations = 100;
 tform = imregtform(startFrame,endFrame, 'translation', optimizer, metric);
 
-%%% Comment out between------- to remove loop %%%
-aligned = 0;
-mult = 1;
-while aligned ~= 2
-%%%--------------------------------------------------------------%%%
-    disp('Aligning Images ...')
-    for i = 1:size(inFrames,2)
-        outFrames(i).cdata(:,:,1) = imtranslate(inFrames(i).cdata(:,:,1),...
-            [mult*round(tform.T(3,1)),0]);
-        outFrames(i).cdata(:,:,2) = imtranslate(inFrames(i).cdata(:,:,2),...
-            [mult*round(tform.T(3,1)),0]);
-        outFrames(i).cdata(:,:,3) = imtranslate(inFrames(i).cdata(:,:,3),...
-            [mult*round(tform.T(3,1)),0]);
-    end
-%%%--------------------------------------------------------------%%%    
-    RrowVals = [];GrowVals = [];BrowVals = [];
-    
-    for i = 1:size(outFrames,2)
-        currentImage = outFrames(i).cdata;
-        redImage = currentImage(:,:,1);
-        greenImage = currentImage(:,:,2);
-        blueImage = currentImage(:,:,3);
-        
-        [rows, cols] = size(redImage);
-        RrowVals = [RrowVals; redImage(rows/2,:)];
-        GrowVals = [GrowVals; greenImage(rows/2,:)];
-        BrowVals = [BrowVals; blueImage(rows/2,:)];
-
-    end
-    
-    rtestRecondImage = 256*iradon(RrowVals',theta, 'Cosine');
-    gtestRecondImage = 256*iradon(GrowVals',theta, 'Cosine');
-    btestRecondImage = 256*iradon(BrowVals',theta, 'Cosine');
-    testRecondImage = cat(3,rtestRecondImage, gtestRecondImage, btestRecondImage);
-    imshow(testRecondImage);
-    
-    aligned = input('Left(1), Right(3), or does this look OK? (2)');
-    if aligned == 1
-        mult = mult + 0.1;
-    elseif aligned == 3
-        mult = mult - 0.1;
-    else
-        mult = mult;
-    end
+for i = 1:size(inFrames,2)
+    outFrames(i).cdata(:,:,1) = imtranslate(inFrames(i).cdata(:,:,1),...
+        [round(tform.T(3,1)),0]);
+    outFrames(i).cdata(:,:,2) = imtranslate(inFrames(i).cdata(:,:,2),...
+        [round(tform.T(3,1)),0]);
+    outFrames(i).cdata(:,:,3) = imtranslate(inFrames(i).cdata(:,:,3),...
+        [round(tform.T(3,1)),0]);
+    disp(['Shoving image ',num2str(i),' around']);
 end
-%%%--------------------------------------------------------------%%%
 end
 
