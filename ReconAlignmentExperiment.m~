@@ -23,11 +23,7 @@ for i = 1:m
     imFrames(i).cdata = imread(imageList(i).name);
 end
 
-low = -10;
-high = 10;
-step = 1;
-for alignPix = low:1:high
-    
+for alignPix = 
 imFrames = alignStack(imFrames);
 
 %set aside teh memory
