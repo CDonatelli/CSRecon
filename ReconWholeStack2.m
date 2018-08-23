@@ -135,9 +135,9 @@ while aligned ~= 2
     
     aligned = input('Left(1), Right(3), or does this look OK? (2)');
     if aligned == 1
-        mult = mult + 0.1;
+        mult = mult + 0.01;
     elseif aligned == 3
-        mult = mult - 0.1;
+        mult = mult - 0.01;
     else
         mult = mult;
     end
