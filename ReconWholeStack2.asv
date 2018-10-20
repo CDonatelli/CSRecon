@@ -1,4 +1,4 @@
-function data = ReconWholeStack2(filePrefix)
+function [data, reconTime] = ReconWholeStack2(filePrefix, cameraParams)
 
 %process video into stack of useful images
 
@@ -6,18 +6,21 @@ imageList = dir('*.JPG') ;
 [m,n] = size(imageList);
 theta = 180/m;
 testImage = imread(imageList(1).name);
+% testImage = undistortImage(testImage,cameraParams);
 
 figure
 imshow(testImage);
 [J, rect] = imcrop(testImage);
-if rect(3)>rect(4)
-    rect(3)=rect(4);
-elseif rect(4)>rect(3)
-    rect(4)=rect(3);
-else
-    rect = rect;
-end
-testImage = imcrop(imread(imageList(1).name),rect);
+% if rect(3)>rect(4)
+%     rect(3)=rect(4);
+% elseif rect(4)>rect(3)
+%     rect(4)=rect(3);
+% else
+%     rect = rect;
+% end
+% assumes the images is landscape
+rect(3) = rect(4);
+testImage = imcrop(testImage,rect);
 
 disp('Getting image dimensions ...')
 imHeight = size(testImage,1);
@@ -29,14 +32,23 @@ imWidth = size(testImage,2);
 %image data and a cmap field with the color map
 imFrames = struct('cdata',zeros(imHeight,imWidth,3,'uint8'),...
     'colormap',[]);
+scaledFrames = struct('cdata',zeros(imHeight,imWidth,3,'uint8'),...
+    'colormap',[]);
 
 disp('Creating Image Frame Structure ...')
 for i = 1:m
     imFrames(i).cdata = imcrop(imread(imageList(i).name),rect);
+%     imFrames(i).cdata = imcrop(undistortImage(imread(imageList(i).name),cameraParams),rect);
+%     scaledFrames(i).cdata = imresize(imcrop(undistortImage(imread(imageList(i).name),cameraParams),rect),0.2);
+    scaledFrames(i).cdata = imresize(imcrop(imread(imageList(i).name),rect),0.5);  
+    imshow(imFrames(i).cdata);
 end
 
 disp('Calculating Alignment ...')
-imFrames = alignStack(imFrames,theta);
+mult = adjustAlignment(scaledFrames,theta);
+
+disp('Applying Alignment to full stack ...')
+imFrames = alignStack(imFrames,theta,mult);
 
 %set aside teh memory
 disp('Setting aside memory for data structures...')
@@ -66,16 +78,18 @@ directoryString = [filePrefix,'_slices'];
 mkdir(directoryString)
 cd(directoryString)
 disp('Reconstructing the images ...')
-for i = 2000:1:2005     % this should be 1:1:size(data,2)
-    data(i).rRecondImage = 256*iradon(data(i).RrowVals',theta, 'Cosine');
-    data(i).gRecondImage = 256*iradon(data(i).GrowVals',theta, 'Cosine');
-    data(i).bRecondImage = 256*iradon(data(i).BrowVals',theta, 'Cosine');
-    data(i).recondImage = cat(3,data(i).rRecondImage,...
-        data(i).gRecondImage, data(i).bRecondImage);
-    imshow(data(i).recondImage);
-    saveas(gcf, [filePrefix,'_', num2str(i,'%03i'),'.tif'])
+tic
+figure
+for i = 1:1:size(data,2)  % this should be 1:1:size(data,2)
+    rRecondImage = 256*iradon(data(i).RrowVals',theta, 'Cosine');
+    gRecondImage = 256*iradon(data(i).GrowVals',theta, 'Cosine');
+    bRecondImage = 256*iradon(data(i).BrowVals',theta, 'Cosine');
+    recondImage = cat(3,rRecondImage,gRecondImage, bRecondImage);
+    imshow(recondImage);
+    imwrite(recondImage, [filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
     disp(['Reconstruction ', num2str(i), ' out of ', num2str(size(data,2)), ' complete.'])
 end
+reconTime = toc
 cd ..
 %imageExample = imread(imageList(1).name);
 %imshow(rowVals);
@@ -83,7 +97,31 @@ cd ..
 
 end
 
-function outFrames = alignStack(inFrames,theta)
+function outFrames = alignStack(inFrames,theta, mult)
+%get the first and last frame. Estimate the translation distance between
+%them
+% startFrame = rgb2gray(inFrames(1).cdata);
+% endFrame = fliplr(rgb2gray(inFrames(end).cdata));
+% [optimizer, metric] = imregconfig('multimodal');
+% optimizer.InitialRadius = 0.009;
+% optimizer.Epsilon = 1.5e-4;
+% optimizer.GrowthFactor = 1.01;
+% optimizer.MaximumIterations = 100;
+% tform = imregtform(startFrame,endFrame, 'translation', optimizer, metric);
+
+disp('Aligning Images ...')
+frNum = size(inFrames,2);
+    for i = 1:frNum
+        outFrames(i).cdata(:,:,1) = imtranslate(inFrames(i).cdata(:,:,1),...
+            [mult,0]);
+        outFrames(i).cdata(:,:,2) = imtranslate(inFrames(i).cdata(:,:,2),...
+            [mult,0]);
+        outFrames(i).cdata(:,:,3) = imtranslate(inFrames(i).cdata(:,:,3),...
+            [mult,0]);
+    end
+end
+
+function mult = adjustAlignment(inFrames,theta)
 %get the first and last frame. Estimate the translation distance between
 %them
 startFrame = rgb2gray(inFrames(1).cdata);
@@ -95,21 +133,19 @@ optimizer.GrowthFactor = 1.01;
 optimizer.MaximumIterations = 100;
 tform = imregtform(startFrame,endFrame, 'translation', optimizer, metric);
 
-%%% Comment out between------- to remove loop %%%
 aligned = 0;
-mult = 1;
-while aligned ~= 2
-%%%--------------------------------------------------------------%%%
+mult = round(tform.T(3,1)/2);
+while aligned ~= 3
     disp('Aligning Images ...')
-    for i = 1:size(inFrames,2)
+    frNum = size(inFrames,2);
+    for i = 1:frNum
         outFrames(i).cdata(:,:,1) = imtranslate(inFrames(i).cdata(:,:,1),...
-            [mult*round(tform.T(3,1)),0]);
+            [mult,0]);
         outFrames(i).cdata(:,:,2) = imtranslate(inFrames(i).cdata(:,:,2),...
-            [mult*round(tform.T(3,1)),0]);
+            [mult,0]);
         outFrames(i).cdata(:,:,3) = imtranslate(inFrames(i).cdata(:,:,3),...
-            [mult*round(tform.T(3,1)),0]);
+            [mult,0]);
     end
-%%%--------------------------------------------------------------%%%    
     RrowVals = [];GrowVals = [];BrowVals = [];
     
     for i = 1:size(outFrames,2)
@@ -119,11 +155,10 @@ while aligned ~= 2
         blueImage = currentImage(:,:,3);
         
         [rows, cols] = size(redImage);
-        RrowVals = [RrowVals; redImage(rows/2,:)];
-        GrowVals = [GrowVals; greenImage(rows/2,:)];
-        BrowVals = [BrowVals; blueImage(rows/2,:)];
-
-    end
+        RrowVals = [RrowVals; redImage(round((rows/4*2)),:)];
+        GrowVals = [GrowVals; greenImage(round(rows/4*2),:)];
+        BrowVals = [BrowVals; blueImage(round(rows/4*2),:)];  
+    end     
     
     rtestRecondImage = 256*iradon(RrowVals',theta, 'Cosine');
     gtestRecondImage = 256*iradon(GrowVals',theta, 'Cosine');
@@ -131,15 +166,23 @@ while aligned ~= 2
     testRecondImage = cat(3,rtestRecondImage, gtestRecondImage, btestRecondImage);
     imshow(testRecondImage);
     
-    aligned = input('Left(1), Right(3), or does this look OK? (2)');
+    aligned = input('Left(1,2), Right(4,5), or does this look OK? (3)');
     if aligned == 1
-        mult = mult + 0.1;
+        mult = mult + 10;
+    elseif aligned == 2
+        mult = mult + 1;
     elseif aligned == 3
-        mult = mult - 0.1;
-    else
         mult = mult;
+    elseif aligned == 4
+        mult = mult - 1;
+    elseif aligned == 5
+        mult = mult -10;
     end
 end
-%%%--------------------------------------------------------------%%%
 end
 
+function outFrames = deWarpImages(inFrames)
+
+
+
+end
