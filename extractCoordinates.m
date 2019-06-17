@@ -6,10 +6,10 @@ Points = {};
 % numPts = input('how many points are in each file? :');
 numPts = 7;
 
-for i = 1:length(names)
+for i = 1:length(names)-1
     filename = names(i).name;
-    species = filename(1:end-9);
-    perc = filename(end-8:end-7);
+    species = filename(1:end-8);
+    perc = filename(end-6:end-5);
     
     %Read In File
     %filename = 'Z:\Donatelli\Elongate Fish Vert Mechanics\Raw data - ...
@@ -23,7 +23,7 @@ for i = 1:length(names)
     fclose(fileID);
     XYZpts = [dataArray{1:end-1}];
     
-    XYpts = [XYZpts(:,3),XYZpts(:,2)];
+    XYpts = [XYZpts(:,3),XYZpts(:,1)];
     XYptsTransform = [];
     for j = 1:numPts
         XYptsTransform = [XYptsTransform,XYpts(j,:)];
