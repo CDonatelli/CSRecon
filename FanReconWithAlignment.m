@@ -1,4 +1,4 @@
-function [data, reconTime] = ReconWholeStack2(filePrefix)
+function [data, reconTime] = FanReconWithAlignment(filePrefix)
 
 %process video into stack of useful images
 
@@ -74,9 +74,17 @@ for i = 1:1:m
 end
 
 % make the individual channels and the RGB image
+currentDirectory = pwd;
 directoryString = [filePrefix,'_slices'];
+redDirString = [filePrefix,'_redSlices'];
+greDirString = [filePrefix,'_greSlices'];
+bluDirString = [filePrefix,'_bluSlices'];
 mkdir(directoryString)
-cd(directoryString)
+mkdir(redDirString)
+mkdir(greDirString)
+mkdir(bluDirString)
+
+%cd(directoryString)
 disp('Reconstructing the images ...')
 tic
 figure
@@ -84,9 +92,14 @@ for i = 1:1:size(data,2)  % this should be 1:1:size(data,2)
     rRecondImage = 256*iradon(data(i).RrowVals',theta, 'Cosine');
     gRecondImage = 256*iradon(data(i).GrowVals',theta, 'Cosine');
     bRecondImage = 256*iradon(data(i).BrowVals',theta, 'Cosine');
+    
+%     imwrite(rRecondImage, [pwd,'\',redDirString, '\Red', filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
+%     imwrite(gRecondImage, [pwd,'\',greDirString, '\Gre', filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
+%     imwrite(bRecondImage, [pwd,'\',bluDirString, '\Blu', filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
+    
     recondImage = cat(3,rRecondImage,gRecondImage, bRecondImage);
     imshow(recondImage);
-    imwrite(recondImage, [filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
+    imwrite(recondImage, [pwd,'\',directoryString, '\', filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
     disp(['Reconstruction ', num2str(i), ' out of ', num2str(size(data,2)), ' complete.'])
 end
 reconTime = toc

@@ -1,4 +1,4 @@
-function [data, reconTime] = ReconWholeStack2(filePrefix)
+function [data, reconTime] = RadonReconWithAlignment(filePrefix)
 
 %process video into stack of useful images
 
@@ -26,29 +26,58 @@ disp('Getting image dimensions ...')
 imHeight = size(testImage,1);
 imWidth = size(testImage,2);
 
-%read in the movie frames to a structure
+%read in the frames to a structure
 %when the loop is done there will be a structure with as many entries as
 %there are movie frames. The structure will have a cdata field with teh
 %image data and a cmap field with the color map
-imFrames = struct('cdata',zeros(imHeight,imWidth,3,'uint8'),...
+imFramesOG = struct('cdata',zeros(imHeight,imWidth,3,'uint8'),...
     'colormap',[]);
 scaledFrames = struct('cdata',zeros(imHeight,imWidth,3,'uint8'),...
     'colormap',[]);
 
 disp('Creating Image Frame Structure ...')
 for i = 1:m
-    imFrames(i).cdata = imcrop(imread(imageList(i).name),rect);
+    imFramesOG(i).cdata = imcrop(imread(imageList(i).name),rect);
 %     imFrames(i).cdata = imcrop(undistortImage(imread(imageList(i).name),cameraParams),rect);
 %     scaledFrames(i).cdata = imresize(imcrop(undistortImage(imread(imageList(i).name),cameraParams),rect),0.2);
-    scaledFrames(i).cdata = imresize(imcrop(imread(imageList(i).name),rect),0.5);  
-    imshow(imFrames(i).cdata);
+    scaledFrames(i).cdata = imresize(imcrop(imread(imageList(i).name),rect),0.25);  
+    imshow(imFramesOG(i).cdata);
 end
 
 disp('Calculating Alignment ...')
-mult = adjustAlignment(scaledFrames,theta);
+mult1 = adjustAlignment(scaledFrames,theta, 0.15);
+mult2 = adjustAlignment(scaledFrames,theta, 0.50);
+mult3 = adjustAlignment(scaledFrames,theta, 0.85);
+
+p = polyfit(0.25*[0.15*imHeight,0.5*imHeight,0.85*imHeight], [mult1, mult2, mult3],1);
+slope = p(1);
+maxAngle = atand(slope);
+angles = linspace(0,maxAngle,m);
 
 disp('Applying Alignment to full stack ...')
-imFrames = alignStack(imFrames,theta,mult);
+imFramesOG = alignStack(imFramesOG,theta,mult2,angles);
+
+[J, rect2] = imcrop(imFramesOG(end).cdata);
+rect2(3) = rect2(4);
+
+imHeight = size(J,1);
+imWidth = size(J,2);
+scaledFrames = struct('cdata',zeros(imHeight,imHeight,3,'uint8'),...
+    'colormap',[]);
+imFrames = struct('cdata',zeros(imHeight,imHeight,3,'uint8'),...
+    'colormap',[]);
+
+disp('Re-cropping rotated images')
+for i = 1:m
+    imFrames(i).cdata = imcrop(imFramesOG(i).cdata,rect2);
+    scaledFrames(i).cdata = imresize(imFrames(i).cdata,0.25);  
+end
+
+mult5 = adjustAlignment(scaledFrames,theta, 0.50);
+angles5 = zeros(1,360);
+
+disp('Applying New Alignment to full stack ...')
+imFrames = alignStack(imFrames,theta,mult5,angles5);
 
 %set aside teh memory
 disp('Setting aside memory for data structures...')
@@ -74,30 +103,44 @@ for i = 1:1:m
 end
 
 % make the individual channels and the RGB image
+currentDirectory = pwd;
 directoryString = [filePrefix,'_slices'];
+redDirString = [filePrefix,'_redSlices'];
+greDirString = [filePrefix,'_greSlices'];
+bluDirString = [filePrefix,'_bluSlices'];
 mkdir(directoryString)
-cd(directoryString)
+%mkdir(redDirString)
+%mkdir(greDirString)
+%mkdir(bluDirString)
+
+%cd(directoryString)
 disp('Reconstructing the images ...')
 tic
-figure
+%figure
+
 for i = 1:1:size(data,2)  % this should be 1:1:size(data,2)
     rRecondImage = 256*iradon(data(i).RrowVals',theta, 'Cosine');
     gRecondImage = 256*iradon(data(i).GrowVals',theta, 'Cosine');
     bRecondImage = 256*iradon(data(i).BrowVals',theta, 'Cosine');
+    
+    %imwrite(rRecondImage, [pwd,'\',redDirString, '\Red', filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
+    %imwrite(gRecondImage, [pwd,'\',greDirString, '\Gre', filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
+    %imwrite(bRecondImage, [pwd,'\',bluDirString, '\Blu', filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
+    
     recondImage = cat(3,rRecondImage,gRecondImage, bRecondImage);
-    imshow(recondImage);
-    imwrite(recondImage, [filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
+    %imshow(recondImage);
+    imwrite(recondImage, [pwd,'\',directoryString, '\', filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
     disp(['Reconstruction ', num2str(i), ' out of ', num2str(size(data,2)), ' complete.'])
 end
 reconTime = toc
-cd ..
+%cd ..
 %imageExample = imread(imageList(1).name);
 %imshow(rowVals);
 %output_size = max(size(imageExample));
 
 end
 
-function outFrames = alignStack(inFrames,theta, mult)
+function outFrames = alignStack(inFrames,theta, mult, angles)
 %get the first and last frame. Estimate the translation distance between
 %them
 % startFrame = rgb2gray(inFrames(1).cdata);
@@ -112,16 +155,23 @@ function outFrames = alignStack(inFrames,theta, mult)
 disp('Aligning Images ...')
 frNum = size(inFrames,2);
     for i = 1:frNum
-        outFrames(i).cdata(:,:,1) = imtranslate(inFrames(i).cdata(:,:,1),...
+        inFrames(i).cdata(:,:,1) = imtranslate(inFrames(i).cdata(:,:,1), ...
             [mult,0]);
-        outFrames(i).cdata(:,:,2) = imtranslate(inFrames(i).cdata(:,:,2),...
+        inFrames(i).cdata(:,:,2) = imtranslate(inFrames(i).cdata(:,:,2), ...
             [mult,0]);
-        outFrames(i).cdata(:,:,3) = imtranslate(inFrames(i).cdata(:,:,3),...
+        inFrames(i).cdata(:,:,3) = imtranslate(inFrames(i).cdata(:,:,3), ...
             [mult,0]);
     end
+
+    for i = 1:frNum
+        outFrames(i).cdata(:,:,1) = imrotate(inFrames(i).cdata(:,:,1), angles(i));
+        outFrames(i).cdata(:,:,2) = imrotate(inFrames(i).cdata(:,:,2), angles(i));
+        outFrames(i).cdata(:,:,3) = imrotate(inFrames(i).cdata(:,:,3), angles(i));
+    end
+    
 end
 
-function mult = adjustAlignment(inFrames,theta)
+function mult = adjustAlignment(inFrames,theta, slice)
 %get the first and last frame. Estimate the translation distance between
 %them
 startFrame = rgb2gray(inFrames(1).cdata);
@@ -155,9 +205,9 @@ while aligned ~= 3
         blueImage = currentImage(:,:,3);
         
         [rows, cols] = size(redImage);
-        RrowVals = [RrowVals; redImage(round((rows/4*3)),:)];
-        GrowVals = [GrowVals; greenImage(round(rows/4*3),:)];
-        BrowVals = [BrowVals; blueImage(round(rows/4*3),:)];  
+        RrowVals = [RrowVals; redImage(round(slice*rows),:)];
+        GrowVals = [GrowVals; greenImage(round(slice*rows),:)];
+        BrowVals = [BrowVals; blueImage(round(slice*rows),:)];  
     end     
     
     rtestRecondImage = 256*iradon(RrowVals',theta, 'Cosine');
