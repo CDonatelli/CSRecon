@@ -105,9 +105,9 @@ end
 % make the individual channels and the RGB image
 currentDirectory = pwd;
 directoryString = [filePrefix,'_slices'];
-redDirString = [filePrefix,'_redSlices'];
-greDirString = [filePrefix,'_greSlices'];
-bluDirString = [filePrefix,'_bluSlices'];
+% redDirString = [filePrefix,'_redSlices'];
+% greDirString = [filePrefix,'_greSlices'];
+% bluDirString = [filePrefix,'_bluSlices'];
 mkdir(directoryString)
 %mkdir(redDirString)
 %mkdir(greDirString)
@@ -129,7 +129,7 @@ for i = 1:1:size(data,2)  % this should be 1:1:size(data,2)
     
     recondImage = cat(3,rRecondImage,gRecondImage, bRecondImage);
     %imshow(recondImage);
-    imwrite(recondImage, [pwd,'\',directoryString, '\', filePrefix,'_', num2str(i,'%03i'),'.tif'],'tif')
+    imwrite(recondImage, [pwd,'\',directoryString, '\', filePrefix,'_', num2str(i,'%04i'),'.tif'],'tif')
     disp(['Reconstruction ', num2str(i), ' out of ', num2str(size(data,2)), ' complete.'])
 end
 reconTime = toc
